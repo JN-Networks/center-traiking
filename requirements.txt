@@ -1,0 +1,8 @@
+requests
+dnspython
+python-whois
+urllib3
+beautifulsoup4
+rich
+selenium
+builtwith
