@@ -13,7 +13,7 @@ from rich import print
 from rich.console import Console
 import re
 from plugins.ascii import show_main_logo, takeover_logo, portscan_logo, header_logo, whois_logo, dirb_logo, ssl_logo, open_redirect_logo, cors_logo, tech_detect_logo, http_methods_logo
-from plugins.ascii import dns_zone_logo, banner_logo, email_logo, ti_logo
+from plugins.ascii import dns_zone_logo, banner_logo, email_logo, ti_logo, vuln_scanner_logo, csp_logo, clickjack_logo, cookie_logo
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 console = Console()
@@ -534,6 +534,204 @@ def threat_intel():
 
     input("\n[Press ENTER to return to menu or type 'exit' to quit]: ").lower().strip() == "exit" and sys.exit()
 
+def vuln_scanner():
+    try:
+        import os
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except:
+        pass
+    
+    vuln_scanner_logo()
+    console.print("\n[bold cyan]Simple Vulnerability Scanner[/bold cyan]\n")
+
+    target_url = input("[?] Enter Target URL (e.g. https://example.com): ").strip()
+
+    def scan_headers(url):
+        console.print("\n[bold yellow][+] Scanning HTTP Headers...[/bold yellow]\n")
+        try:
+            response = requests.get(url, timeout=10)
+            headers = response.headers
+
+            security_headers = [
+                "Content-Security-Policy",
+                "Strict-Transport-Security",
+                "X-Content-Type-Options",
+                "X-Frame-Options",
+                "X-XSS-Protection",
+                "Referrer-Policy"
+            ]
+
+            for header in security_headers:
+                if header in headers:
+                    console.print(f"[green][✔ ] {header}: {headers[header]}[/green]")
+                else:
+                    console.print(f"[bold red][!] {header} missing![/bold red]")
+
+        except Exception as e:
+            console.print(f"[bold red][ERROR] Header scan failed: {e}[/bold red]")
+
+    def scan_directories(url):
+        console.print("\n[bold yellow][+] Scanning Common Directories...[/bold yellow]\n")
+        common_dirs = ['admin', 'login', 'uploads', 'backup', '.git', 'config']
+
+        for directory in common_dirs:
+            full_url = f"{url}/{directory}/"
+            try:
+                res = requests.get(full_url, timeout=5)
+                if res.status_code == 200:
+                    console.print(f"[bold red][!] Open: {full_url} (Status: {res.status_code})[/bold red]")
+            except:
+                pass
+
+    def check_tls_version(domain):
+        console.print("\n[bold yellow][+] Checking TLS Version...[/bold yellow]\n")
+        try:
+            context = ssl.create_default_context()
+            conn = context.wrap_socket(
+                socket.socket(socket.AF_INET),
+                server_hostname=domain,
+            )
+            conn.settimeout(5)
+            conn.connect((domain, 443))
+            tls_version = conn.version()
+            console.print(f"[green][✔ ] TLS Version: {tls_version}[/green]")
+            conn.close()
+
+            if tls_version in ['TLSv1', 'TLSv1.1']:
+                console.print("[bold red][!] Outdated/unsecure TLS version detected![/bold red]")
+        except Exception as e:
+            console.print(f"[bold red][ERROR] TLS Check fehlgeschlagen: {e}[/bold red]")
+
+    console.print(f"\n[bold blue]Target: {target_url}[/bold blue]\n{'-'*50}")
+    scan_headers(target_url)
+    scan_directories(target_url)
+
+    domain = target_url.replace('https://', '').replace('http://', '').split('/')[0]
+    check_tls_version(domain)
+
+    console.print("\n[bold cyan][+] Scan completed![/bold cyan]\n")
+
+    user_input = input("\n[Press ENTER to return to menu or type 'exit' to quit]: ").lower().strip()
+    if user_input == "exit":
+        sys.exit()
+
+def csp_evaluator():
+    try:
+        import os
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except:
+        pass
+
+    csp_logo()
+    console.print("\n[bold cyan]Content Security Policy Evaluator[/bold cyan]\n")
+
+    target = input("[?] Enter Target URL (e.g. https://example.com): ").strip()
+
+    try:
+        response = requests.get(target, timeout=10)
+        csp = response.headers.get('Content-Security-Policy', '')
+
+        if not csp:
+            console.print("[bold red][!] No CSP policy set![/bold red]")
+        else:
+            console.print(f"[green][✔ ] CSP found:[/green] {csp}\n")
+            if 'unsafe-inline' in csp:
+                console.print("[bold red][!] Warning: unsafe-inline used![/bold red]")
+            if 'unsafe-eval' in csp:
+                console.print("[bold red][!] Warning: unsafe-eval used![/bold red]")
+            if "*" in csp:
+                console.print("[bold yellow][!] Attention: Wildcards (*) can be risky.[/bold yellow]")
+
+    except Exception as e:
+        console.print(f"[bold red][ERROR] Request failed: {e}[/bold red]")
+
+    user_input = input("\n[Press ENTER to return to menu or type 'exit' to quit]: ").lower().strip()
+    if user_input == "exit":
+        sys.exit()
+
+def clickjacking_test():
+    try:
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except:
+        pass
+
+    clickjack_logo()
+    console.print("\n[bold cyan]Clickjacking Test[/bold cyan]\n")
+
+    target = input("[?] Enter Target URL (e.g. https://example.com): ").strip()
+
+    try:
+        response = requests.get(target, timeout=10)
+        xfo = response.headers.get('X-Frame-Options', None)
+
+        if not xfo:
+            console.print("[bold red][!] X-Frame-Options header is missing! Page may be vulnerable to Clickjacking![/bold red]")
+            output_dir = "clickjack_poc"
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            filename_part = target.replace("https://", "").replace("http://", "").replace("/", "_").replace(".", "_")
+            file_name = f"{output_dir}/clickjack_poc_{filename_part}.html"
+            with open(file_name, "w") as f:
+                f.write(f"""
+<!DOCTYPE html>
+<html>
+<head>
+<title>Clickjacking PoC</title>
+</head>
+<body>
+<h2>Clickjacking Test - {target}</h2>
+<iframe src="{target}" width="800" height="600" style="opacity:0.8;"></iframe>
+</body>
+</html>
+""")
+            console.print(f"[green][✔] PoC HTML created: {file_name}[/green]")
+        else:
+            console.print(f"[green][✔] X-Frame-Options is set: {xfo}[/green]")
+
+    except Exception as e:
+        console.print(f"[bold red][ERROR] Request failed: {e}[/bold red]")
+
+    user_input = input("\n[Press ENTER to return to menu or type 'exit' to quit]: ").lower().strip()
+    if user_input == "exit":
+        sys.exit()
+
+def cookie_security_check():
+    try:
+        import os
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except:
+        pass
+
+    cookie_logo()
+    console.print("\n[bold cyan]Cookie Security Check[/bold cyan]\n")
+
+    target = input("[?] Enter Target URL (e.g. https://example.com): ").strip()
+
+    try:
+        response = requests.get(target, timeout=10)
+
+        cookies = response.cookies
+        if not cookies:
+            console.print("[yellow][!] No cookies found![/yellow]")
+        else:
+            for cookie in cookies:
+                console.print(f"\n[green][✔ ] Cookie found:[/green] {cookie.name}")
+                if not cookie.secure:
+                    console.print(f"[bold red][!] Secure flag missing![/bold red]")
+                if not cookie.has_nonstandard_attr('HttpOnly'):
+                    console.print(f"[bold red][!] HttpOnly flag missing![/bold red]")
+                if not cookie.has_nonstandard_attr('SameSite'):
+                    console.print(f"[yellow][!] SameSite attribute missing![/yellow]")
+                if cookie.expires is None:
+                    console.print(f"[yellow][!] No expiration time set (session cookie)![/yellow]")
+
+    except Exception as e:
+        console.print(f"[bold red][ERROR] Request failed: {e}[/bold red]")
+
+    user_input = input("\n[Press ENTER to return to menu or type 'exit' to quit]: ").lower().strip()
+    if user_input == "exit":
+        sys.exit()
+
 # Main Menu
 def main_menu():
     while True:
@@ -547,6 +745,8 @@ def main_menu():
 [9] Tech Detection              [10] HTTP Method Checker 
 [11] DNS Zone Transfer Check    [12] Banner Grabbing
 [13] Email & SPF/DMARC Check    [14] Threat Intelligence Check  
+[15] Vulnerability Scanner      [16] CSP Evaluator
+[17] Clickjacking Test          [18] Cookie Security Check
 
 
 [0] Exit
@@ -580,6 +780,14 @@ def main_menu():
             email_spf_dmarc_check()
         elif choice == '14':
             threat_intel()
+        elif choice == '15':
+            vuln_scanner()
+        elif choice == '16':
+            csp_evaluator()
+        elif choice == '17':
+            clickjacking_test()
+        elif choice == '18':
+            cookie_security_check()
         elif choice == '0':
             print("\n[+] Exiting. Goodbye!")
             sys.exit()

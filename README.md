@@ -46,6 +46,19 @@ This Python script is designed for security professionals and penetration tester
 14. **Threat Intelligence Check**  
    Performs threat intelligence lookups related to the target domain.
 
+15. **Vulnerability Scanner**  
+   Checks the target for common web vulnerabilities and misconfigurations.
+
+16. **CSP Evaluator**  
+   Evaluates Content Security Policy headers and flags insecure directives.
+
+17. **Clickjacking Test**  
+   Tests for missing `X-Frame-Options` header and generates clickjacking PoC.
+
+18. **Cookie Security Check**  
+   Analyzes cookies for missing security flags like `Secure`, `HttpOnly`, and `SameSite`.
+
+
 ## Installation
 
 To use this tool, clone this repository and install the required dependencies:
